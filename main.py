@@ -1,3 +1,5 @@
+import random
+
 import pygame
 import sqlite3
 import csv
@@ -15,7 +17,7 @@ def generate_level(x, y):
         row_wall = '002'
         row_list = []
         for i in range(y + 2):
-            lisik = []
+            listik = []
             if i == 0 or i == y + 2:
                 for j in range(x + 2):
                     lisik.append('002')
@@ -26,9 +28,20 @@ def generate_level(x, y):
                         lisik.append('002')
                     else:
                         lisik.append('000')
-                    listik.append(row)
+                    listik.append(row_list)
 
         writer.writerow(row_list)
+    c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('ess_room',)).fetchall()
+    used_tiles = set()
+    for room in c:
+        rx = random.randint(0, x)
+        ry = random.randint(0, y)
+        if rx not in used_tiles and ry not in used_tiles:
+            used_tiles.add(rx)
+            used_tiles.add(ry)
+            # тут будет добавление комнаты на карту, пока делаю(
+
+
         # тут будут генерации по созданной пустой карте
 
 while running:  # главный игровой цикл
