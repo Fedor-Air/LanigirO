@@ -178,6 +178,9 @@ def start_screen():
                 # button the game is terminated
                 if 10 <= mouse[0] <= 115 and 180 <= mouse[1] <= 200:
                     settings()
+                elif text_out[-1][1].x <= mouse[0] <= text_out[-1][1].x + text_out[-1][1].w and \
+                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:  # выход из приложения
+                    terminate()
             elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
                 return  # начинаем игру
         pygame.display.flip()
