@@ -4,6 +4,7 @@ import os
 import sys
 import sqlite3
 import csv
+import copy
 
 if __name__ == '__main__':
     pygame.init()
@@ -15,37 +16,108 @@ if __name__ == '__main__':
 
 
 class Board:
-    def __init__(self, WIDTH, HEIGHT):
+    def __init__(self, WIDTH, HEIGHT, col_st):
         self.WIDTH = WIDTH
         self.HEIGHT = HEIGHT
         self.board = [['000'] * WIDTH for _ in range(HEIGHT)]
-        used_coor = []
+        self.unused_coor = []
+        col_sten = col_st
         for i in range(self.WIDTH):
             for j in range(self.WIDTH):
-                used_coor.append((j, i))  # пустая карта, карта всегда квадрат, для удобства
+                self.unused_coor.append((j, i))
 
-        con = sqlite3.connect("rooms_bd.sqlite")
-        cur = con.cursor()
-        c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('ess_room',)).fetchall()  # осн генерация
-        for room in c:
-            rcoor = random.choice(used_coor)
-            used_coor.remove(rcoor)
-            self.board[rcoor[0]][rcoor[1]] = room[2]
+        def walls_gen():
+            self.board = [['000'] * WIDTH for _ in range(HEIGHT)]
+            for i in range(col_sten):
+                x = random.randint(0, self.WIDTH - 1)
+                y = random.randint(0, self.WIDTH - 1)
+                while self.board[x][y] == '002':
+                    x = random.randint(0, self.WIDTH - 1)
+                    y = random.randint(0, self.WIDTH - 1)
+                self.unused_coor.remove((x, y))
+                self.board[x][y] = '002'
 
-        if self.WIDTH >= 5 and self.HEIGHT >= 5:
-            c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('room',)).fetchall()  # генерация доп комнат
-            for i in range(self.WIDTH - 3):
-                rroom = random.randint(0, len(c) - 1)
-                rcoor = random.choice(used_coor)
-                used_coor.remove(rcoor)
-                self.board[rcoor[0]][rcoor[1]] = c[rroom][2]
-            c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('monstr',)).fetchall()  # генерация монстров (пока только 1((()
-            for i in range(self.WIDTH - 3):
-                rmon = random.randint(0, len(c) - 1)
-                rcoor = random.choice(used_coor)
-                used_coor.remove(rcoor)
-                self.board[rcoor[0]][rcoor[1]] = c[rmon][2]
+        def generate():
+            con = sqlite3.connect("rooms_bd.sqlite")
+            cur = con.cursor()
+            c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('ess_room',)).fetchall()  # осн генерация
+            for room in c:
+                rcoor = random.choice(self.unused_coor)
+                self.unused_coor.remove(rcoor)
+                self.board[rcoor[0]][rcoor[1]] = room[2]
+            if self.WIDTH >= 5 and self.HEIGHT >= 5:
+                c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('room',)).fetchall()  # генерация доп комнат
+                for i in range(self.WIDTH - 3):
+                    rroom = random.randint(0, len(c) - 1)
+                    rcoor = random.choice(self.unused_coor)
+                    self.unused_coor.remove(rcoor)
+                    self.board[rcoor[0]][rcoor[1]] = c[rroom][2]
+                c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('monstr',)).fetchall()   # генерация монстров (пока только 1((()
+                for i in range(self.WIDTH - 3):
+                    rmon = random.randint(0, len(c) - 1)
+                    rcoor = random.choice(self.unused_coor)
+                    self.unused_coor.remove(rcoor)
+                    self.board[rcoor[0]][rcoor[1]] = c[rmon][2]
 
+        def spawn(r):
+            for i in range(r):
+                for j in range(r):
+                    if self.board[j][i] == '000':
+                        return i, j
+
+        def osmotr(x, y, r):
+            print(x, y)
+            if 0 <= x < r and 0 <= y - 1 < r and w[x][y - 1] == '000':
+                w[x][y - 1] = '1'
+                edinici.append([x, y - 1])
+                # print('1')
+            if 0 <= x + 1 < r and 0 <= y < r and w[x + 1][y] == '000':
+                w[x + 1][y] = '1'
+                edinici.append([x + 1, y])
+                # print('2')
+
+            if 0 <= x < r and 0 <= y + 1 < r and w[x][y + 1] == '000':
+                w[x][y + 1] = '1'
+                edinici.append([x, y + 1])
+
+                # print('3')
+
+            if 0 <= x - 1 < r and 0 <= y < r and w[x - 1][y] == '000':
+                w[x - 1][y] = '1'
+                edinici.append([x - 1, y])
+
+        def vivod(q):
+            for i in q:
+                print(*i)
+            print()
+
+        nice_gen = True
+        walls_gen()
+        while nice_gen:
+            result = self.WIDTH * self.WIDTH - col_sten
+            edinici = list()
+            x, y = spawn(self.WIDTH)
+            w = copy.deepcopy(self.board)
+            w[y][x] = '  2'
+            setch = 1
+            osmotr(y, x, self.WIDTH)
+            while len(edinici) != 0:
+                y2, x2 = edinici[0]
+                osmotr(y2, x2, self.WIDTH)
+                w[y2][x2] = '  2'
+                r_lis = [y2, x2]
+                edinici.remove(r_lis)
+            vivod(w)
+            check = True
+            for i in range(self.WIDTH):
+                for j in range(self.WIDTH):
+                    if w[i][j] == '000':
+                        check = False
+            if check:
+                nice_gen = False
+            else:
+                walls_gen()
+        generate()
         print(*self.board, sep='\n')
 
 
@@ -117,7 +189,7 @@ def settings():
                   "Разрешение",
                   "Звук",
                   "Музыка",
-                  "Эффекты"]
+                  "Эффекты",]
 
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -143,9 +215,13 @@ def settings():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                return  # начинаем игру
+                screen.fill(pygame.Color("black"))
+                fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+                screen.blit(fon, (0, 0))
+                return  
         pygame.display.flip()
         clock.tick(int(FPS))
 
-cc = Board(10, 10)  # оно в принте отображает созданный лабиринт, цифры - айди комнаты в бд
+
+# cc = Board(7, 7, 10)  # оно в принте отображает созданный лабиринт, цифры - айди комнаты в бд
 start_screen()
