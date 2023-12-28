@@ -189,7 +189,7 @@ def settings():
                   "Разрешение",
                   "Звук",
                   "Музыка",
-                  "Эффекты",]
+                  "Эффекты"]
 
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
