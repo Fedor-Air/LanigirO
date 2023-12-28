@@ -189,7 +189,8 @@ def settings():
                   "Разрешение",
                   "Звук",
                   "Музыка",
-                  "Эффекты"]
+                  "Эффекты",
+                  "Выход"]
 
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -215,10 +216,12 @@ def settings():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                screen.fill(pygame.Color("black"))
-                fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-                screen.blit(fon, (0, 0))
-                return  
+                if text_out[-1][1].x <= mouse[0] <= text_out[-1][1].x + text_out[-1][1].w and \
+                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h: # добавление выхода из настроек
+                    screen.fill(pygame.Color("black"))
+                    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+                    screen.blit(fon, (0, 0))
+                    return
         pygame.display.flip()
         clock.tick(int(FPS))
 
