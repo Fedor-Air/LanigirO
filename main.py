@@ -150,8 +150,8 @@ def start_screen():
                   "Выход"]
 
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    pygame.display.set_caption('LanigirO')
     screen.blit(fon, (0, 0))
-
     font = pygame.font.Font(None, 30)
     text_coord = 50
     text_out = []
@@ -179,7 +179,7 @@ def start_screen():
                 if 10 <= mouse[0] <= 115 and 180 <= mouse[1] <= 200:
                     settings()
                 elif text_out[-1][1].x <= mouse[0] <= text_out[-1][1].x + text_out[-1][1].w and \
-                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:  # выход из приложения
+                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:
                     terminate()
             elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
                 return  # начинаем игру
@@ -227,6 +227,42 @@ def settings():
                     return
         pygame.display.flip()
         clock.tick(int(FPS))
+
+def level_settings():
+    intro_text = ["Размеры лабиринта:",
+                  "Количество стен:",
+                  "Количество игроков:"]
+
+    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    text_out = []
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+        text_out.append((string_rendered, intro_rect))  # тут добавь после этого, окошка выбора каждого параметра, кол-ва игроков и тд
+        # тип: число и рядом с ним стрелочки вверх и вниз для регулирования кол-ва, потом сделай чтоб конечное число сувалось в значения
+    players_amount = 0
+    walls_amount = 0
+    dimensions_board = (0, 0)
+    start_game(dimensions_board, walls_amount, players_amount)
+
+
+def start_game(dim, walls, players):
+    something = 0
+    # отрисовки и тд
+    self.players_info = []
+    for i in range(1, players + 1):
+        pl_pos = (None, None)
+        items = []
+        self.players_info.append([f'Player {i}', pl_pos, items])
 
 
 # cc = Board(7, 7, 10)  # оно в принте отображает созданный лабиринт, цифры - айди комнаты в бд
