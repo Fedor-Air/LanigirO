@@ -6,17 +6,12 @@ import sqlite3
 import csv
 import copy
 
-if __name__ == '__main__':
-    pygame.init()
-    size = WIDTH, HEIGHT = 800, 400
-    screen = pygame.display.set_mode(size)
-    FPS = 50  # количество кадров в секунду
-    clock = pygame.time.Clock()
-    running = True
 
+musicon = True
 
 class Board:
     def __init__(self, WIDTH, HEIGHT, col_st):
+        self.walls_coor = []
         self.WIDTH = WIDTH
         self.HEIGHT = HEIGHT
         self.board = [['000'] * WIDTH for _ in range(HEIGHT)]
@@ -28,8 +23,11 @@ class Board:
 
         col_sten = col_st
 
-
         def walls_gen():
+            self.color_board = []
+            self.unused_coor = []
+            self.board = [['000'] * WIDTH for _ in range(HEIGHT)]
+            self.walls_coor = []
             for i in range(self.WIDTH):
                 a = []
                 for j in range(self.WIDTH):
@@ -37,7 +35,7 @@ class Board:
                 self.color_board.append(a)
             for i in range(self.WIDTH):
                 for j in range(self.WIDTH):
-                    self.unused_coor.append((j, i))
+                    self.unused_coor.append((i, j))
             self.board = [['000'] * WIDTH for _ in range(HEIGHT)]
             for i in range(col_sten):
                 x = random.randint(0, self.WIDTH - 1)
@@ -46,6 +44,7 @@ class Board:
                     x = random.randint(0, self.WIDTH - 1)
                     y = random.randint(0, self.WIDTH - 1)
                 self.unused_coor.remove((x, y))
+                self.walls_coor.append((x, y))
                 self.color_board[x][y] = "red"
                 self.board[x][y] = '002'
 
@@ -64,12 +63,15 @@ class Board:
                     rcoor = random.choice(self.unused_coor)
                     self.unused_coor.remove(rcoor)
                     self.board[rcoor[0]][rcoor[1]] = c[rroom][2]
-                c = cur.execute("""SELECT * FROM rooms WHERE type=?""", ('monstr',)).fetchall()   # генерация монстров (пока только 1((()
-                for i in range(self.WIDTH - 3):
-                    rmon = random.randint(0, len(c) - 1)
-                    rcoor = random.choice(self.unused_coor)
-                    self.unused_coor.remove(rcoor)
-                    self.board[rcoor[0]][rcoor[1]] = c[rmon][2]
+                if len(self.walls_coor) > 4:
+                    for i in range(len(self.walls_coor) // 3):
+                        rcoor = random.choice(self.walls_coor)
+                        self.board[rcoor[0]][rcoor[1]] = "004"
+                        self.walls_coor.remove(rcoor)
+                    for i in range(len(self.walls_coor) // 3):
+                        rcoor = random.choice(self.walls_coor)
+                        self.board[rcoor[0]][rcoor[1]] = "003"
+                        self.walls_coor.remove(rcoor)
 
         def spawn(r):
             for i in range(r):
@@ -98,7 +100,6 @@ class Board:
                 w[x - 1][y] = '1'
                 edinici.append([x - 1, y])
 
-
         def vivod(q):
             for i in q:
                 print(*i)
@@ -112,7 +113,6 @@ class Board:
             x, y = spawn(self.WIDTH)
             w = copy.deepcopy(self.board)
             w[y][x] = '  2'
-            setch = 1
             osmotr(y, x, self.WIDTH)
             while len(edinici) != 0:
                 y2, x2 = edinici[0]
@@ -128,9 +128,9 @@ class Board:
                         check = False
             if check:
                 nice_gen = False
+                generate()
             else:
                 walls_gen()
-        generate()
         print(*self.board, sep='\n')
         print(*self.color_board, sep='\n')
 
@@ -177,7 +177,6 @@ class Board:
         self.cell_size = cell_size
 
 
-
 def load_image(name, transparent=False):
     fullname = os.path.join('resources', name)
     try:
@@ -186,10 +185,7 @@ def load_image(name, transparent=False):
         print('Cannot load image:', name)
         raise SystemExit(message)
 
-    if transparent:
-        image = image.convert_alpha()
-    else:
-        image = image.convert()
+
     return image
 
 
@@ -198,20 +194,28 @@ def terminate():
     pygame.quit()
     sys.exit()
 
-FONT = None
-font2 = pygame.font.SysFont(None, 50)
-
 
 def start_screen():
+    global musicon
     intro_text = ["LanigirO", "",
                   "Оффлайн игра",
-                  "Сетевая игра",
                   "Настройки",
                   "Выход"]
-
+    if musicon:
+        pygame.mixer.music.stop()
+        pygame.mixer.music.unload()
+        pygame.mixer.music.load("resources/music1.mp3")
+        pygame.mixer.music.play(-1)
+    else:
+        pygame.mixer.music.stop()
+        pygame.mixer.music.unload()
+    size = WIDTH, HEIGHT = 800, 400
+    screen = pygame.display.set_mode(size)
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+
     pygame.display.set_caption('LanigirO')
     screen.blit(fon, (0, 0))
+
     font = pygame.font.Font(None, 30)
     text_coord = 50
     text_out = []
@@ -233,7 +237,8 @@ def start_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if 10 <= mouse[0] <= 115 and 180 <= mouse[1] <= 200:
+                if text_out[3][1].x <= mouse[0] <= text_out[3][1].x + text_out[3][1].w and \
+                        text_out[3][1].y <= mouse[1] <= text_out[3][1].y + text_out[3][1].h:
                     settings()
                 elif text_out[-1][1].x <= mouse[0] <= text_out[-1][1].x + text_out[-1][1].w and \
                         text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:
@@ -248,18 +253,17 @@ def start_screen():
 
 
 def settings():
-    intro_text = ["FPS",
-                  "Разрешение",
-                  "Звук",
-                  "Музыка",
-                  "Эффекты",
+    global musicon
+    intro_text = ["Музыка ВКЛ/ВЫКЛ",
                   "Выход"]
 
+    size = WIDTH, HEIGHT = 800, 400
+    screen = pygame.display.set_mode(size)
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
 
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
+    font = pygame.font.Font(None, 50)
+    text_coord = 90
     text_out = []
     for line in intro_text:
         string_rendered = font.render(line, 1, pygame.Color('black'))
@@ -272,20 +276,30 @@ def settings():
         text_out.append((string_rendered, intro_rect))
     # Отрисовка
     while True:
+        if not musicon:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
                 if text_out[-1][1].x <= mouse[0] <= text_out[-1][1].x + text_out[-1][1].w and \
-                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h: # добавление выхода из настроек
+                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:
                     screen.fill(pygame.Color("black"))
                     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
                     screen.blit(fon, (0, 0))
-                    start_screen()
                     return
+                elif text_out[0][1].x <= mouse[0] <= text_out[0][1].x + text_out[0][1].w and \
+                        text_out[0][1].y <= mouse[1] <= text_out[0][1].y + text_out[0][1].h:
+                    if musicon:
+                        musicon = False
+                    else:
+                        musicon = True
+
         pygame.display.flip()
         clock.tick(int(FPS))
+
 
 def level_settings():
     intro_text = ["Размеры лабиринта:", "<", "7x7", ">",
@@ -321,6 +335,8 @@ def level_settings():
             text_coordx += intro_rect.width
             screen.blit(string_rendered, intro_rect)
             text_out.append([string_rendered, intro_rect])
+
+    font2 = pygame.font.Font(None, 50)
     start_button = font2.render("Начать игру!", 1, pygame.Color('red'))
     intro_rect2 = start_button.get_rect()
     text_coordy += 10
@@ -333,13 +349,16 @@ def level_settings():
     walls_amount = int(intro_text[6])
     dimensions_board = int(intro_text[2][0])
     while True:
+        if not musicon:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if text_out[-1][1].x <= mouse[0] <= text_out[-1][1].x + text_out[-1][1].w and \
-                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:  # добавление выхода из настроек
+                        text_out[-1][1].y <= mouse[1] <= text_out[-1][1].y + text_out[-1][1].h:
                     screen.fill(pygame.Color("black"))
                     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
                     screen.blit(fon, (0, 0))
@@ -350,7 +369,8 @@ def level_settings():
                         text_out[1][1].y <= mouse[1] <= text_out[1][1].y + text_out[1][1].h:
                     if dimensions_board - 1 != 6:
                         dimensions_board -= 1
-                        screen.fill(pygame.Color("white"), (text_out[2][1].x, text_out[2][1].y, text_out[2][1].w, text_out[2][1].h))
+                        screen.fill(pygame.Color("white"),
+                                    (text_out[2][1].x, text_out[2][1].y, text_out[2][1].w, text_out[2][1].h))
                         text_out[2][0] = font.render(f"{dimensions_board}x{dimensions_board}", 1, pygame.Color('black'))
                         text_out[2][1].w = text_out[2][0].get_width()
                         text_out[2][1].h = text_out[2][0].get_height()
@@ -378,7 +398,8 @@ def level_settings():
                         text_out[3][1].y <= mouse[1] <= text_out[1][1].y + text_out[3][1].h:
                     if dimensions_board + 1 != 16:
                         dimensions_board += 1
-                        screen.fill(pygame.Color("white"), (text_out[2][1].x, text_out[2][1].y, text_out[2][1].w, text_out[2][1].h))
+                        screen.fill(pygame.Color("white"),
+                                    (text_out[2][1].x, text_out[2][1].y, text_out[2][1].w, text_out[2][1].h))
                         text_out[2][0] = font.render(f"{dimensions_board}x{dimensions_board}", 1, pygame.Color('black'))
                         text_out[2][1].w = text_out[2][0].get_width()
                         text_out[2][1].h = text_out[2][0].get_height()
@@ -389,7 +410,8 @@ def level_settings():
                         text_out[5][1].y <= mouse[1] <= text_out[5][1].y + text_out[5][1].h:
                     if walls_amount - 1 != -1:
                         walls_amount -= 1
-                        screen.fill(pygame.Color("white"), (text_out[6][1].x, text_out[6][1].y, text_out[6][1].w, text_out[6][1].h))
+                        screen.fill(pygame.Color("white"),
+                                    (text_out[6][1].x, text_out[6][1].y, text_out[6][1].w, text_out[6][1].h))
                         text_out[6][0] = font.render(f"{walls_amount}", 1, pygame.Color('black'))
                         text_out[6][1].w = text_out[6][0].get_width()
                         text_out[6][1].h = text_out[6][0].get_height()
@@ -399,7 +421,8 @@ def level_settings():
                         text_out[7][1].y <= mouse[1] <= text_out[7][1].y + text_out[7][1].h:
                     if walls_amount + 1 < dimensions_board ** 2 // 2:
                         walls_amount += 1
-                        screen.fill(pygame.Color("white"), (text_out[6][1].x, text_out[6][1].y, text_out[6][1].w, text_out[6][1].h))
+                        screen.fill(pygame.Color("white"),
+                                    (text_out[6][1].x, text_out[6][1].y, text_out[6][1].w, text_out[6][1].h))
                         text_out[6][0] = font.render(f"{walls_amount}", 1, pygame.Color('black'))
                         text_out[6][1].w = text_out[6][0].get_width()
                         text_out[6][1].h = text_out[6][0].get_height()
@@ -410,7 +433,8 @@ def level_settings():
                         text_out[9][1].y <= mouse[1] <= text_out[9][1].y + text_out[9][1].h:
                     if players_amount - 1 != 0:
                         players_amount -= 1
-                        screen.fill(pygame.Color("white"), (text_out[10][1].x, text_out[10][1].y, text_out[10][1].w, text_out[10][1].h))
+                        screen.fill(pygame.Color("white"),
+                                    (text_out[10][1].x, text_out[10][1].y, text_out[10][1].w, text_out[10][1].h))
                         text_out[10][0] = font.render(f"{players_amount}", 1, pygame.Color('black'))
                         text_out[10][1].w = text_out[10][0].get_width()
                         text_out[10][1].h = text_out[10][0].get_height()
@@ -437,14 +461,67 @@ def level_settings():
         clock.tick(int(FPS))
 
 
+class Knight(pygame.sprite.Sprite):
+
+
+    def __init__(self):
+        # НЕОБХОДИМО вызвать конструктор родительского класса Sprite.
+        # Это очень важно!!!
+        super().__init__()
+        Idle_image = load_image("_Idle.png")
+        self.image = Idle_image
+        self.rect = self.image.get_rect()
+        self.rect.x = 180
+        self.rect.y = 160
+
+        self.run_images = []
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_0.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_1.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_2.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_3.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_4.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_5.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_6.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_7.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_8.png'))
+        self.run_images.append(pygame.image.load('resources/Run_images/_Run_9.png'))
+        self.run_index = 0
+
+    def update(self, state):
+        if state == "runs":
+            self.run_index += 1
+            if self.run_index >= len(self.run_images):
+                self.run_index = 0
+            self.image = self.run_images[self.run_index]
+        elif state == "run":
+            self.image = load_image("_Run.png")
+        elif state == "ok":
+            self.image = load_image("_Idle.png")
+        else:
+            self.image = load_image("_Death.png")
+
+
 class Game:
+
     def __init__(self, dim, walls, players):
+        global musicon
+        self.diff_out = []
         self.dim = dim
         self.walls = walls
         self.chat_coordy = 520
         self.players = players
+        self.endgame = False
         self.main_field = Board(self.dim, self.dim, self.walls)
+        print(*self.main_field.board, sep="\n")
         self.players_info = []
+        if musicon:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+            pygame.mixer.music.load("resources/music2.mp3")
+            pygame.mixer.music.play(-1)
+        else:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
         for i in range(1, self.players + 1):
             pl_pos = (None, None)
             items = []
@@ -458,7 +535,8 @@ class Game:
         fon = pygame.transform.scale(load_image('fon2.jpg'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         font = pygame.font.Font(None, 30)
-        string_rendered = font.render(f"Игрок {self.choosing_player} выбирает точку появления", 1, pygame.Color('white'))
+        string_rendered = font.render(f"Игрок {self.choosing_player} выбирает точку появления", 1,
+                                      pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coordx = (1200 - intro_rect.width) // 2
         intro_rect.top = 30
@@ -482,7 +560,8 @@ class Game:
                             if self.choosing_player > self.players:
                                 self.main_gameprocess()
                             else:
-                                string_rendered = font.render(f"Игрок {self.choosing_player} выбирает точку появления", 1, pygame.Color('white'))
+                                string_rendered = font.render(f"Игрок {self.choosing_player} выбирает точку появления",
+                                                              1, pygame.Color('white'))
                                 intro_rect = string_rendered.get_rect()
                                 text_coordx = (1200 - intro_rect.width) // 2
                                 intro_rect.top = 30
@@ -499,10 +578,68 @@ class Game:
                 if self.main_field.board[i][j] == "005":
                     player[1] = (j, i)
                     self.chat.append(f"{player[0]} был убит монстром.")
+                    my_group.update("death")
+                    rect_1 = pygame.Rect(240, 240, 100, 80)
+                    pygame.draw.rect(screen, (255, 255, 255), rect_1)
+                    my_group.draw(screen)
                     if player[2]:
                         new_coor = random.choice(self.main_field.unused_coor)
                         self.main_field.board[new_coor[0]][new_coor[1]] = "006"
                         self.chat.append(f"{player[0]} потерял ключ. Ключ появился в случайной клетке.")
+
+    def win_screen(self):
+        if musicon:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+            pygame.mixer.music.load("resources/music3.mp3")
+            pygame.mixer.music.play(-1)
+        else:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+        size = WIDTH, HEIGHT = 1200, 700
+        screen = pygame.display.set_mode(size)
+        fon = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
+        screen.blit(fon, (0, 0))
+        pygame.display.flip()
+        font = pygame.font.Font(None, 100)
+        string_rendered1 = font.render(f"Игрок {self.choosing_player} Выбрался!", 1,
+                                      pygame.Color('white'))
+        intro_rect1 = string_rendered1.get_rect()
+        text_coordx = (1200 - intro_rect1.width) // 2
+        intro_rect1.top = 30
+        intro_rect1.x = text_coordx
+        screen.blit(string_rendered1, intro_rect1)
+        pygame.display.flip()
+        self.endgame = True
+        font = pygame.font.Font(None, 70)
+        string_rendered2 = font.render(f"Выйти в меню", 1,
+                                      pygame.Color('white'))
+        intro_rect2 = string_rendered2.get_rect()
+        text_coordx = (1200 - intro_rect2.width) // 2
+        intro_rect2.top = 600
+        intro_rect2.x = text_coordx
+        screen.blit(string_rendered2, intro_rect2)
+        text_out = []
+        text_out.append((string_rendered2, intro_rect2))
+        pygame.display.flip()
+        while True:
+            pygame.display.flip()
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if text_out[0][1].x <= mouse[0] <= text_out[0][1].x + text_out[0][1].w and \
+                            text_out[0][1].y <= mouse[1] <= text_out[0][1].y + text_out[0][1].h:
+                        start_screen()
+                        return
+            my_group.update("runs")
+            screen.blit(fon, (0, 0))
+            screen.blit(string_rendered1, intro_rect1)
+            screen.blit(string_rendered2, intro_rect2)
+            my_sprite.rect = pygame.Rect((1200 - my_sprite.rect.width) // 2 - 95, 100, 280, 180)
+            my_group.draw(screen)
+            clock.tick(20)
 
     def check_tile(self, player, tile, dir_ind):
         pos = tile
@@ -527,6 +664,10 @@ class Game:
                 exit_dir = 0
                 player[3] = "rubber"
                 player.append(exit_dir)
+            my_group.update("run")
+            rect_1 = pygame.Rect(240, 240, 100, 80)
+            pygame.draw.rect(screen, (255, 255, 255), rect_1)
+            my_group.draw(screen)
         elif self.main_field.board[pos[1]][pos[0]] == "006":
             if player[3] == "rubber":
                 player[3] = "ok"
@@ -534,20 +675,38 @@ class Game:
             self.chat.append(f"{player[0]} нашел ключ.")
             self.chat_render()
             self.main_field.board[pos[1]][pos[0]] = "000"
+            my_group.update("run")
+            rect_1 = pygame.Rect(240, 240, 100, 80)
+            pygame.draw.rect(screen, (255, 255, 255), rect_1)
+            my_group.draw(screen)
         elif self.main_field.board[pos[1]][pos[0]] == "007":
             if player[3] == "rubber":
                 player[3] = "ok"
             if player[2]:  # win четотам
-                pass
+                self.win_screen()
+                return True
             else:
                 self.chat.append(f"{player[0]} нашел выход, но нету ключа...")
                 self.chat_render()
+                my_group.update("run")
+                rect_1 = pygame.Rect(240, 240, 100, 80)
+                pygame.draw.rect(screen, (255, 255, 255), rect_1)
+                my_group.draw(screen)
         elif self.main_field.board[pos[1]][pos[0]] == "008":
             if player[3] == "rubber":
                 player[3] = "ok"
             self.chat.append(f"{player[0]} угодил в тюрьму. (Пропуск 1 хода)")
+            my_group.update("death")
+            rect_1 = pygame.Rect(240, 240, 100, 80)
+            pygame.draw.rect(screen, (255, 255, 255), rect_1)
+            my_group.draw(screen)
             self.chat_render()
             player[3] = "jail"
+        else:
+            my_group.update("run")
+            rect_1 = pygame.Rect(240, 240, 100, 80)
+            pygame.draw.rect(screen, (255, 255, 255), rect_1)
+            my_group.draw(screen)
 
     def chat_render(self):
         self.chat_coordy = 520
@@ -621,6 +780,11 @@ class Game:
         intro_rect.x = text_coordx
         text_coordx += intro_rect.width
         screen.blit(string_rendered, intro_rect)
+        string_rendered = font.render(f"Пауза", 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = 500
+        intro_rect.x = 50
+        screen.blit(string_rendered, intro_rect)
         pygame.display.flip()
         intro_text = ["Вверх",
                       "Влево", "Вправо",
@@ -628,6 +792,8 @@ class Game:
         font = pygame.font.Font(None, 90)
         pygame.display.flip()
         self.text_out = []
+        self.diff_out = []
+        self.diff_out.append((string_rendered, intro_rect))
         text_coordy = 150
         text_coordx = 200
         for line in intro_text:
@@ -672,6 +838,10 @@ class Game:
                 screen.blit(string_rendered, intro_rect)
                 self.text_out.append((string_rendered, intro_rect))
                 pygame.display.flip()
+        my_group.update("ok")
+        rect_1 = pygame.Rect(240, 240, 100, 80)
+        pygame.draw.rect(screen, (255, 255, 255), rect_1)
+        my_group.draw(screen)
 
     def main_gameprocess(self):
         self.choosing_player = 1
@@ -683,6 +853,8 @@ class Game:
             self.players_info[self.choosing_player - 1][1] = (pos[0], pos[1] - 1)
             pos = self.players_info[self.choosing_player - 1][1]
             self.check_tile(player, pos, self.text_out.index(direction))
+            if self.endgame:
+                return
             self.chat_render()
             self.turn_change()
 
@@ -692,6 +864,8 @@ class Game:
             self.players_info[self.choosing_player - 1][1] = (pos[0] - 1, pos[1])
             pos = self.players_info[self.choosing_player - 1][1]
             self.check_tile(player, pos, self.text_out.index(direction))
+            if self.endgame:
+                return
             self.chat_render()
             self.turn_change()
 
@@ -701,6 +875,8 @@ class Game:
             self.players_info[self.choosing_player - 1][1] = (pos[0] + 1, pos[1])
             pos = self.players_info[self.choosing_player - 1][1]
             self.check_tile(player, pos, self.text_out.index(direction))
+            if self.endgame:
+                return
             self.chat_render()
             self.turn_change()
 
@@ -710,6 +886,8 @@ class Game:
             self.players_info[self.choosing_player - 1][1] = (pos[0], pos[1] + 1)
             pos = self.players_info[self.choosing_player - 1][1]
             self.check_tile(player, pos, self.text_out.index(direction))
+            if self.endgame:
+                return
             self.chat_render()
             self.turn_change()
 
@@ -726,7 +904,44 @@ class Game:
             intro_rect.x = text_coordx
             screen.blit(string_rendered, intro_rect)
             pygame.display.flip()
+            player[3] = "ok"
             self.turn_change()
+
+        def pause_menu():
+            intro_text = ["Вернуться в игру",
+                          "В меню"]
+
+            WIDTH, HEIGHT = 1200, 700
+            font = pygame.font.Font(None, 90)
+            fon = pygame.transform.scale(load_image('fon2.jpg'), (WIDTH, HEIGHT))
+            screen.blit(fon, (0, 0))
+            text_coordyy = 50
+            text_coordxx = 10
+            text_out = []
+            for line in intro_text:
+                string_rendered = font.render(line, 1, pygame.Color('white'))
+                intro_rect = string_rendered.get_rect()
+                text_coordxx += 10
+                intro_rect.top = text_coordyy
+                intro_rect.x = 10
+                text_coordyy += intro_rect.height
+                screen.blit(string_rendered, intro_rect)
+                text_out.append((string_rendered, intro_rect))
+            pygame.display.flip()
+            while True:
+                pygame.display.flip()
+                mouse = pygame.mouse.get_pos()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        terminate()
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if text_out[0][1].x <= mouse[0] <= text_out[0][1].x + text_out[0][1].w and \
+                                text_out[0][1].y <= mouse[1] <= text_out[0][1].y + text_out[0][1].h:
+                            return
+                        elif text_out[1][1].x <= mouse[0] <= text_out[1][1].x + text_out[1][1].w and \
+                                text_out[1][1].y <= mouse[1] <= text_out[1][1].y + text_out[1][1].h:
+                            start_screen()
+                pygame.display.flip()
 
         def get_button(pos):
             x, y = pos
@@ -740,11 +955,13 @@ class Game:
         self.chat_render()
         running = True
         while running:
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 pygame.display.flip()
                 if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse = pygame.mouse.get_pos()
                     direction = get_button(event.pos)
                     if direction:
                         if self.text_out.index(direction) == 0:
@@ -753,6 +970,8 @@ class Game:
                             if player[3] == "ok":
                                 if self.main_field.board[pos[1] - 1][pos[0]] != "002" and pos[1] - 1 >= 0:
                                     move_up(pos)
+                                    if self.endgame:
+                                        return
                             elif player[3] == "jail":
                                 skip_turn()
                             elif player[3] == "rubber":
@@ -760,8 +979,14 @@ class Game:
                                     pos = self.players_info[self.choosing_player - 1][1]
                                     self.chat.append(f"{player[0]} вышел из резиновой комнаты...")
                                     move_up(pos)
+                                    if self.endgame:
+                                        return
                                 else:
                                     self.chat.append(f"{player[0]} прошел клетку.")
+                                    my_group.update("run")
+                                    rect_1 = pygame.Rect(240, 240, 100, 80)
+                                    pygame.draw.rect(screen, (255, 255, 255), rect_1)
+                                    my_group.draw(screen)
                                     self.chat_render()
                                     self.turn_change()
 
@@ -771,6 +996,8 @@ class Game:
                             if player[3] == "ok":
                                 if self.main_field.board[pos[1]][pos[0] - 1] != "002" and pos[0] - 1 >= 0:
                                     move_left(pos)
+                                    if self.endgame:
+                                        return
                             elif player[3] == "jail":
                                 skip_turn()
                             elif player[3] == "rubber":
@@ -778,8 +1005,14 @@ class Game:
                                     pos = self.players_info[self.choosing_player - 1][1]
                                     self.chat.append(f"{player[0]} вышел из резиновой комнаты...")
                                     move_left(pos)
+                                    if self.endgame:
+                                        return
                                 else:
                                     self.chat.append(f"{player[0]} прошел клетку.")
+                                    my_group.update("run")
+                                    rect_1 = pygame.Rect(240, 240, 100, 80)
+                                    pygame.draw.rect(screen, (255, 255, 255), rect_1)
+                                    my_group.draw(screen)
                                     self.chat_render()
                                     self.turn_change()
 
@@ -787,8 +1020,11 @@ class Game:
                             player = self.players_info[self.choosing_player - 1]
                             pos = self.players_info[self.choosing_player - 1][1]
                             if player[3] == "ok":
-                                if self.main_field.board[pos[1]][pos[0] + 1] != "002" and pos[0] + 1 <= self.dim:
-                                    move_right(pos)
+                                if pos[0] + 1 < self.dim:
+                                    if self.main_field.board[pos[1]][pos[0] + 1] != "002":
+                                        move_right(pos)
+                                        if self.endgame:
+                                            return
                             elif player[3] == "jail":
                                 skip_turn()
                             elif player[3] == "rubber":
@@ -796,8 +1032,14 @@ class Game:
                                     pos = self.players_info[self.choosing_player - 1][1]
                                     self.chat.append(f"{player[0]} вышел из резиновой комнаты...")
                                     move_right(pos)
+                                    if self.endgame:
+                                        return
                                 else:
                                     self.chat.append(f"{player[0]} прошел клетку.")
+                                    my_group.update("run")
+                                    rect_1 = pygame.Rect(240, 240, 100, 80)
+                                    pygame.draw.rect(screen, (255, 255, 255), rect_1)
+                                    my_group.draw(screen)
                                     self.chat_render()
                                     self.turn_change()
 
@@ -805,8 +1047,11 @@ class Game:
                             player = self.players_info[self.choosing_player - 1]
                             pos = self.players_info[self.choosing_player - 1][1]
                             if player[3] == "ok":
-                                if self.main_field.board[pos[1] + 1][pos[0]] != "002" and pos[1] + 1 <= self.dim:
-                                    move_down(pos)
+                                if pos[1] + 1 < self.dim:
+                                    if self.main_field.board[pos[1] + 1][pos[0]] != "002":
+                                        move_down(pos)
+                                        if self.endgame:
+                                            return
                             elif player[3] == "jail":
                                 skip_turn()
                             elif player[3] == "rubber":
@@ -814,11 +1059,30 @@ class Game:
                                     pos = self.players_info[self.choosing_player - 1][1]
                                     self.chat.append(f"{player[0]} вышел из резиновой комнаты...")
                                     move_down(pos)
+                                    if self.endgame:
+                                        return
                                 else:
                                     self.chat.append(f"{player[0]} прошел клетку.")
+                                    my_group.update("run")
+                                    rect_1 = pygame.Rect(240, 240, 100, 80)
+                                    pygame.draw.rect(screen, (255, 255, 255), rect_1)
+                                    my_group.draw(screen)
                                     self.chat_render()
                                     self.turn_change()
+                    elif self.diff_out[0][1].x <= mouse[0] <= self.diff_out[0][1].x + self.diff_out[0][1].w and \
+                            self.diff_out[0][1].y <= mouse[1] <= self.diff_out[0][1].y + self.diff_out[0][1].h:
+                        pause_menu()
+                        self.scr_render()
+                        self.chat_render()
+            clock.tick(20)
 
-                                    
+if __name__ == '__main__':
+    pygame.init()
+    size = WIDTH, HEIGHT = 800, 400
+    screen = pygame.display.set_mode(size)
+    my_sprite = Knight()
+    my_group = pygame.sprite.Group(my_sprite)
+    FPS = 50  # количество кадров в секунду
+    clock = pygame.time.Clock()
+
 start_screen()
-
