@@ -3,7 +3,6 @@ import pygame
 import os
 import sys
 import sqlite3
-import csv
 import copy
 
 
